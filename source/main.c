@@ -5,5 +5,8 @@
 
 int main(void){
 
+	while(1){
+		ssu_shell();	
+	}
 	return 0;
 }
