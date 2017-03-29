@@ -22,6 +22,7 @@ void ssu_sed(int argc, char *argv[]){
 	char curpath[BUFSIZE];
 	char n;
 	char *tmp;
+	char *tmp2;
 	DIR *dp;
 	sed_opt.is_b = 0;
 	sed_opt.is_u = 0;
@@ -70,6 +71,8 @@ void ssu_sed(int argc, char *argv[]){
 			mnum++;
 		}
 	}
+
+	free(tmp);
 
 	if(argc-mnum < 4){
 		sedUsage();
@@ -178,28 +181,52 @@ void ssu_sed(int argc, char *argv[]){
 				sedUsage();
 				return;
 			}
-			if(realpath(argv[++i], pathname) == NULL){
-				//err
-				ism = 1;
-				realpath(".", curpath);
-				p = ssu_strlen(curpath);
-				d = ssu_strlen(argv[i]);
 
-				sed_opt.pathname = (char *)malloc(p+d+2);
-				ssu_memset(sed_opt.pathname, '\0', p+d+2);
-				ssu_strcpy(sed_opt.pathname, curpath);
-				if(curpath[p-1] != '/' && argv[i][0] !='/'){
-					sed_opt.pathname[p] = '/';
-					ssu_strcpy(&sed_opt.pathname[p+1], argv[i]);
-					sed_opt.pathname[p+d+1] = '\0';
+			if(access(argv[++i], F_OK) < 0){
+				if(argv[i][0] == '/'){
+					printf("lella\n");
+					ism = 1;
+					d = ssu_strlen(argv[i]);
+					printf("d : %d\n", d);
+					tmp2 = (char *)malloc(d+1);
+					for(j=0; j < d; j++){
+						if(argv[i][j] == '/'){
+							tmp2[j] = '\0';
+							if(access(tmp2, F_OK) < 0){
+								mkdir(tmp2, 0755);
+							}
+						}
+						tmp2[j] = argv[i][j];
+					}
+					tmp2[d] = '\0';
+					realpath(tmp2, pathname);
+					sed_opt.pathname = pathname;
 				}
 				else{
-					ssu_strcpy(&sed_opt.pathname[p], argv[i]);
-					sed_opt.pathname[p+d] = '\0';
+					printf("argvaaa : %s\n", argv[i]);
+					ism = 1;
+					realpath(".", curpath);
+					p = ssu_strlen(curpath);
+					d = ssu_strlen(argv[i]);
+
+					sed_opt.pathname = (char *)malloc(p+d+2);
+					ssu_memset(sed_opt.pathname, '\0', p+d+2);
+					ssu_strcpy(sed_opt.pathname, curpath);
+					if(curpath[p-1] != '/'){
+						sed_opt.pathname[p] = '/';
+						ssu_strcpy(&sed_opt.pathname[p+1], argv[i]);
+						sed_opt.pathname[p+d+1] = '\0';
+					}
+					else{
+						ssu_strcpy(&sed_opt.pathname[p], argv[i]);
+						sed_opt.pathname[p+d] = '\0';
+					}
+					mkdir(sed_opt.pathname, 0755);
 				}
-				p = mkdir(sed_opt.pathname, 0755);
 			}
 			else{
+				printf("aceess ok\n");
+				realpath(argv[++i], pathname);
 				sed_opt.pathname = pathname;
 			}
 		}
