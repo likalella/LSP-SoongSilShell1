@@ -5,6 +5,8 @@
 
 int main(void){
 
+	system("clear");
+
 	while(1){
 		ssu_shell();	
 	}
