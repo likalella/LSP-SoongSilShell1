@@ -295,6 +295,7 @@ void ssu_sed(int argc, char *argv[]){
 	return;
 }
 
+// 파일을 읽어서, 문자열을 치환하는 함수.
 void replace(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	char buf[BUFSIZE];
 	char tmpfileName[] = "./tmpXXXXXX";
@@ -502,6 +503,7 @@ void replace(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	return;
 }
 
+// 현재 파일이 디렉토리인지 레귤러파일인지 확인하는 함수.
 void searchFile(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	struct stat statbuf;
 	char *tmp = NULL;
@@ -565,6 +567,7 @@ void searchFile(char *path, struct sedOption *sed_opt, char *pathname, int depth
 	return;
 }
 
+// 디렉토리 안을 순회하는 함수.
 void searchDir(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	struct dirent *dirp;
 	DIR *dp;
@@ -625,6 +628,7 @@ void searchDir(char *path, struct sedOption *sed_opt, char *pathname, int depth)
 	closedir(dp);
 }
 
+// 파일에 string이 있는지 확인하는 함수.
 int checkString(char *path, struct sedOption *sed_opt, char *str){
 	int fd;
 	fd = open(path, O_RDONLY);
