@@ -5,19 +5,14 @@
 #include <sys/time.h>
 #include "ssu_shell.h"
 #include "ssu_function.h"
-
-void shellUsage(void){
-	printf("too many argument. plz input less or equal to 10 arguments.\n");
-}
+#include "ssu_usage.h"
 
 void ssu_shell(){
 	int argc=0;
 	char *argv[10];
 	int p_argv[10] = {0, };
-	char prompt[] = "20142404 $ ";
-	char buf[BUFSIZE] = {0, };
-	char buf2[BUFSIZE] = {0, };
-	char tmp[BUFSIZE] = {0, };
+	char buf[2600] = {0, };
+	char buf2[2600] = {0, };
 	char *str;
 	struct ssu_function cmdList[] = {
 		{"ssu_sed", ssu_sed},
@@ -34,7 +29,6 @@ void ssu_shell(){
 	scanf("%[^\n]s", buf);
 	gettimeofday(&startTime, NULL);
 	
-	printf("asdf\n");
 	if(*buf == '\0'){
 		while(getchar() != '\n');
 		return;
@@ -52,7 +46,7 @@ void ssu_shell(){
 			argv[argc] = str;
 	}
 
-	if(argc >= 10){
+	if(argc > 10){
 		// err : print Shell Usage
 		shellUsage();
 	}
@@ -92,6 +86,7 @@ void ssu_shell(){
 	while(micro < 100)
 		micro *= 10;
 
+	printf("\n");
 	printf("time : %ld.%ld\n", sec, micro);
 
 	while(getchar() != '\n');
