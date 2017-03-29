@@ -18,6 +18,8 @@ void ssu_sed(int argc, char *argv[]){
 	struct passwd *u_info;
 	int m[10] = {0, };
 	char fullpath[BUFSIZE];
+	char pathname[BUFSIZE];
+	char curpath[BUFSIZE];
 	char n;
 	char *tmp;
 	DIR *dp;
@@ -41,8 +43,11 @@ void ssu_sed(int argc, char *argv[]){
 	sed_opt.pathname = NULL;
 	int len, len2;
 	int i, j;
+	int p, d;
 	int mnum=0;
+	int ism = 0;
 
+	// check '\ '
 	for(i=1; i<argc-mnum; i++){
 		len = ssu_strlen(argv[i]);
 
@@ -79,6 +84,7 @@ void ssu_sed(int argc, char *argv[]){
 	sed_opt.src_str = argv[2];
 	sed_opt.dest_str = argv[3];
 
+	// option check
 	for(i=4; i<argc-mnum; i++){
 		if(ssu_strcmp(argv[i], "-b") == 0){
 			if(sed_opt.is_b == 1){
@@ -172,7 +178,30 @@ void ssu_sed(int argc, char *argv[]){
 				sedUsage();
 				return;
 			}
-			sed_opt.pathname = argv[++i];
+			if(realpath(argv[++i], pathname) == NULL){
+				//err
+				ism = 1;
+				realpath(".", curpath);
+				p = ssu_strlen(curpath);
+				d = ssu_strlen(argv[i]);
+
+				sed_opt.pathname = (char *)malloc(p+d+2);
+				ssu_memset(sed_opt.pathname, '\0', p+d+2);
+				ssu_strcpy(sed_opt.pathname, curpath);
+				if(curpath[p-1] != '/' && argv[i][0] !='/'){
+					sed_opt.pathname[p] = '/';
+					ssu_strcpy(&sed_opt.pathname[p+1], argv[i]);
+					sed_opt.pathname[p+d+1] = '\0';
+				}
+				else{
+					ssu_strcpy(&sed_opt.pathname[p], argv[i]);
+					sed_opt.pathname[p+d] = '\0';
+				}
+				p = mkdir(sed_opt.pathname, 0755);
+			}
+			else{
+				sed_opt.pathname = pathname;
+			}
 		}
 		else if(ssu_strcmp(argv[i], "-es") == 0){
 			if(sed_opt.is_e == 1 || sed_opt.is_es == 1){
@@ -204,24 +233,6 @@ void ssu_sed(int argc, char *argv[]){
 		}
 	}
 
-	// arguments print
-	for(i=0; i<argc-mnum; i++){
-		len = ssu_strlen(argv[i]);
-		n = i+'0';
-		write(STD_OUT, "arg", 3);
-		write(STD_OUT, &n, 1);
-		write(STD_OUT, " : ", 3);
-		write(STD_OUT, argv[i], len);
-		write(STD_OUT, "\n", 1);
-	}
-
-	//start
-	if(realpath(sed_opt.target, fullpath) == NULL){
-		//err
-		write(STD_OUT, "err : no match path\n", 20);
-		return;
-	}
-
 	if(sed_opt.is_s == 1){
 		len = ssu_strlen(sed_opt.src_str);
 		for(i=0; i<len; i++){
@@ -248,6 +259,7 @@ void ssu_sed(int argc, char *argv[]){
 			}
 		}
 	}
+
 	if(sed_opt.is_is == 1){
 		len = ssu_strlen(sed_opt.istring);
 		for(i=0; i<len; i++){
@@ -257,12 +269,33 @@ void ssu_sed(int argc, char *argv[]){
 		}
 	}
 
-	searchFile(fullpath, &sed_opt, 0);
+	// arguments print
+	for(i=0; i<argc-mnum; i++){
+		len = ssu_strlen(argv[i]);
+		n = i+'0';
+		write(STD_OUT, "arg", 3);
+		write(STD_OUT, &n, 1);
+		write(STD_OUT, " : ", 3);
+		write(STD_OUT, argv[i], len);
+		write(STD_OUT, "\n", 1);
+	}
+
+	// get target fullpath
+	if(realpath(sed_opt.target, fullpath) == NULL){
+		//err
+		write(STD_OUT, "can't find target\n", 18);
+		return;
+	}
+
+	searchFile(fullpath, &sed_opt, sed_opt.pathname, 0);
+
+	if(ism == 1)
+		free(sed_opt.pathname);
 
 	return;
 }
 
-void replace(char *path, struct sedOption *sed_opt, int depth){
+void replace(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	char buf[BUFSIZE];
 	char tmpfileName[] = "./tmpXXXXXX";
 	char *dest;
@@ -308,7 +341,7 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 			write(STD_OUT, " : failed\n", 10);
 			close(fd);
 			close(fdtmp);
-			if(remove(tmpfileName) < 0) return;
+			remove(tmpfileName);
 			return;
 		}
 
@@ -323,6 +356,7 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 			if(lseek(fd, tmp, SEEK_CUR) < 0){
 				write(STD_OUT, path, len);
 				write(STD_OUT, " : failed\n", 10);
+				remove(tmpfileName);
 				return;
 			}
 		}
@@ -405,18 +439,23 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 		if(lseek(fdtmp, 0, SEEK_SET) < 0){
 			write(STD_OUT, path, len);
 			write(STD_OUT, " : failed\n", 10);
+			remove(tmpfileName);
 			return;
 		}
 
 		close(fd);
 
-		if((fd = open(path, O_WRONLY | O_TRUNC )) < 0){
+		if(sed_opt->is_P == 1){
+			path = pathname;
+		}
+		
+		if((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, 0644)) < 0){
 				write(STD_OUT, path, len);
 				write(STD_OUT, " : failed\n", 10);
 				close(fdtmp);
 				if(remove(tmpfileName) < 0) return;
 				return;
-			}
+		}
 
 		while(1){
 			if((readlen = read(fdtmp, buf, BUFSIZE)) < 0){
@@ -431,6 +470,7 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 			if(readlen == 0){
 				close(fd);
 				close(fdtmp);
+				remove(tmpfileName);
 				break;
 			}
 
@@ -457,25 +497,30 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 
 	close(fd);
 	close(fdtmp);
-	remove(tmpfileName) < 0;
+	if(sed_opt->is_P != 1 || (sed_opt->is_P == 1 && isChanged<0))
+		remove(tmpfileName);
 	return;
 }
 
-void searchFile(char *path, struct sedOption *sed_opt, int depth){
+void searchFile(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	struct stat statbuf;
 	char *tmp = NULL;
 	int check;
 	int len;
 
-	if(sed_opt->is_d == 1 && depth > sed_opt->depth)
+	if(sed_opt->is_d == 1 && depth > sed_opt->depth){
 		return;
+	}
 
 	if(stat(path, &statbuf) < 0){
-		//
 		return;
 	}
 	if(S_ISDIR(statbuf.st_mode) != 0){
-		searchDir(path, sed_opt, depth+1);
+		if(sed_opt->is_P == 1){
+			//mkdir
+			mkdir(pathname, 0755);
+		}
+		searchDir(path, sed_opt, pathname, depth+1);
 	}
 	else if(S_ISREG(statbuf.st_mode) != 0){
 		len = ssu_strlen(path);
@@ -515,15 +560,16 @@ void searchFile(char *path, struct sedOption *sed_opt, int depth){
 				return;
 			}
 		}
-		replace(path, sed_opt, depth+1);
+		replace(path, sed_opt, pathname, depth+1);
 	}
 	return;
 }
 
-void searchDir(char *path, struct sedOption *sed_opt, int depth){
+void searchDir(char *path, struct sedOption *sed_opt, char *pathname, int depth){
 	struct dirent *dirp;
 	DIR *dp;
-	char *nPath;
+	char *nPath = NULL;
+	char *pPath = NULL;
 	int p, d;
 
 	if(sed_opt->is_d == 1 && depth > sed_opt->depth)
@@ -557,7 +603,23 @@ void searchDir(char *path, struct sedOption *sed_opt, int depth){
 			ssu_strcpy(&nPath[p], dirp->d_name);
 			nPath[p+d] = '\0';
 		}
-		searchFile(nPath, sed_opt, depth);
+
+		if(sed_opt->is_P == 1){
+			p = ssu_strlen(pathname);
+			pPath = (char *)malloc(p+d+2);
+			ssu_memset(pPath, '\0', p+d+2);
+			ssu_strcpy(pPath, pathname);
+			if(path[p-1] != '/'){
+				pPath[p] = '/';
+				ssu_strcpy(&pPath[p+1], dirp->d_name);
+				pPath[p+d+1] = '\0';
+			}
+			else{
+				ssu_strcpy(&pPath[p], dirp->d_name);
+				pPath[p+d] = '\0';
+			}
+		}
+		searchFile(nPath, sed_opt, pPath, depth);
 		free(nPath);
 	}
 	closedir(dp);

@@ -23,9 +23,9 @@ struct sedOption {
     char *pathname;
 };
 
-void searchDir(char *path, struct sedOption *sed_opt, int depth);
-void searchFile(char *path, struct sedOption *sed_opt, int depth);
-void replace(char *path, struct sedOption *sed_opt, int depth);
+void searchDir(char *path, struct sedOption *sed_opt, char *pathname, int depth);
+void searchFile(char *path, struct sedOption *sed_opt, char *pathname, int depth);
+void replace(char *path, struct sedOption *sed_opt, char *pathname, int depth);
 int checkString(char *path, struct sedOption *sed_opt, char* str);
 
 #endif
