@@ -16,8 +16,10 @@
 void ssu_sed(int argc, char *argv[]){
 	struct sedOption sed_opt;
 	struct passwd *u_info;
+	int m[10] = {0, };
 	char fullpath[BUFSIZE];
 	char n;
+	char *tmp;
 	DIR *dp;
 	sed_opt.is_b = 0;
 	sed_opt.is_u = 0;
@@ -37,20 +39,47 @@ void ssu_sed(int argc, char *argv[]){
 	sed_opt.estring = NULL;
 	sed_opt.istring = NULL;
 	sed_opt.pathname = NULL;
-	int len;
-	int i,j,k;
+	int len, len2;
+	int i, j;
+	int mnum=0;
 
-	j=0;
-	if(argc < 4){
+	for(i=1; i<argc-mnum; i++){
+		len = ssu_strlen(argv[i]);
+
+		if(argv[i][len-1] == '\\'){
+			len2 = ssu_strlen(argv[i+1]);
+			tmp = (char *)malloc((len+len2+1) * sizeof(char));
+			for(j=0; j < len-1; j++){
+				tmp[j] = argv[i][j];
+			}
+			tmp[len-1] = ' ';
+			for(j=0; j<len2; j++){
+				tmp[len+j] = argv[i+1][j];
+			}
+			tmp[len+len2] = '\0';
+
+			argv[i] = tmp;
+			for(j=i+2; j<argc-mnum; j++){
+				argv[j-1] = argv[j]; 
+			}
+			mnum++;
+		}
+	}
+
+	if(argc-mnum < 4){
 		sedUsage();
-				return;
+		return;
+	}
+	else if(argc-mnum > 10){
+		sedUsage();
+		return;
 	}
 
 	sed_opt.target = argv[1];
 	sed_opt.src_str = argv[2];
 	sed_opt.dest_str = argv[3];
 
-	for(i=4; i<argc; i++){
+	for(i=4; i<argc-mnum; i++){
 		if(ssu_strcmp(argv[i], "-b") == 0){
 			if(sed_opt.is_b == 1){
 				sedUsage();
@@ -64,7 +93,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_u = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -82,7 +111,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_i = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -94,7 +123,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_e = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -106,7 +135,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_d = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -139,7 +168,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_P = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -151,7 +180,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_es = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -163,7 +192,7 @@ void ssu_sed(int argc, char *argv[]){
 				return;
 			}
 			sed_opt.is_is = 1;
-			if(i == argc-1){
+			if(i == argc-mnum-1){
 				sedUsage();
 				return;
 			}
@@ -176,7 +205,7 @@ void ssu_sed(int argc, char *argv[]){
 	}
 
 	// arguments print
-	for(i=0; i<argc; i++){
+	for(i=0; i<argc-mnum; i++){
 		len = ssu_strlen(argv[i]);
 		n = i+'0';
 		write(STD_OUT, "arg", 3);
@@ -247,6 +276,7 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 	int fd, fdtmp;
 	int i, j, k;
 	int tmp, sig;
+	int tmp1, tmp2;
 	int len;
 	int isChanged = -1;
 	int more=0;
@@ -300,8 +330,9 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 			more = 0;
 
 		for(i=0; i<readlen; i++){
-			if(buf[i] == '\n')
+			if(buf[i] == '\n'){
 				linenum++;
+			}
 
 			if(more == 1 && i >= readlen-src_len+1)
 				break;
@@ -310,7 +341,7 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 				(sed_opt->is_s == 1 && (*src-buf[i]) == 32)){
 				sig = 0;
 				for(j=1, k=1; k<src_len; j++, k++){
-					if(sed_opt->is_b == 1 && buf[i+j] == ' '){
+					if(sed_opt->is_b == 1 && buf[i+j] == ' ' && *(src+k) != ' '){
 						k--;
 						continue;
 					}
@@ -327,8 +358,27 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 					if(sed_opt->is_p == 1){
 						write(STD_OUT, path, len);
 						write(STD_OUT, " : ", 3);
-						printline = linenum + '0';
-						write(STD_OUT, &printline, 1);
+						tmp1 = 1;
+						tmp2 = linenum;
+						while(1){
+							if(tmp2 / 10 == 0)
+								break;
+							tmp2/=10;
+							tmp1*=10;
+						}
+						tmp2=linenum;
+						while(1){
+							printline = (tmp2/tmp1) + '0';
+							write(STD_OUT, &printline, 1);
+							tmp2%=tmp1;
+							tmp1/=10;
+							if(tmp1 < 10){
+								printline = (tmp2%10) + '0';
+								write(STD_OUT, &printline, 1);
+								break;
+							}
+						
+						}
 						write(STD_OUT, "\n", 1);
 					}
 					write(fdtmp, dest, dest_len);
@@ -360,20 +410,6 @@ void replace(char *path, struct sedOption *sed_opt, int depth){
 
 		close(fd);
 
-		/*if(sed_opt->is_P == 1){
-			if((fd = open(sed_opt->pathname, O_WRONLY | O_CREAT | O_TRUNC)) < 0){
-				close(fdtmp);
-				if(remove(tmpfileName) < 0) return;
-				return;
-		
-		}
-		else{
-			if((fd = open(path, O_WRONLY | O_TRUNC )) < 0){
-				close(fdtmp);
-				if(remove(tmpfileName) < 0) return;
-				return;
-			}
-		}*/
 		if((fd = open(path, O_WRONLY | O_TRUNC )) < 0){
 				write(STD_OUT, path, len);
 				write(STD_OUT, " : failed\n", 10);

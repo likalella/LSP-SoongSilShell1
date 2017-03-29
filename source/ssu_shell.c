@@ -9,8 +9,7 @@
 
 void ssu_shell(){
 	int argc=0;
-	char *argv[10];
-	int p_argv[10] = {0, };
+	char *argv[50];
 	char buf[2600] = {0, };
 	char buf2[2600] = {0, };
 	char *str;
@@ -42,25 +41,21 @@ void ssu_shell(){
 		argc++;
 		str = strtok(NULL, " \t");
 		if(str == NULL) break;
-		if(argc < 10)
-			argv[argc] = str;
+		argv[argc] = str;
 	}
 
-	if(argc > 10){
-		// err : print Shell Usage
-		shellUsage();
+	
+
+	 for(i=0; i<2; i++){
+	 	if(i==1 && argv[0] != NULL){
+			system(buf2);
+		}
+		else if(!strcmp(cmdList[i].cmd, argv[0])){
+			cmdList[i].func(argc, argv);
+			break;
+		}
 	}
-	else{
-		 for(i=0; i<2; i++){
-		 	if(i==1 && argv[0] != NULL){
-				system(buf2);
-			}
-			else if(!strcmp(cmdList[i].cmd, argv[0])){
-				cmdList[i].func(argc, argv);
-				break;
-			}
-		 }
-	}
+
 	
 	//memory free zone
 	memset(buf, '\0', 1);
